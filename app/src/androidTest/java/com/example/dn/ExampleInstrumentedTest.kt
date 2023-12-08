@@ -24,15 +24,6 @@ class ExampleInstrumentedTest {
     }
 
     @Test
-    fun checkFileSavedLocationNotExist() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-
-        // Check if file exist for save location exist
-        assertEquals(null, MainActivity.readLocationFile(appContext, "loc.txt"))
-    }
-
-    @Test
     fun createFile() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext

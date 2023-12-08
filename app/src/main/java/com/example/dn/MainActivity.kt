@@ -5,12 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
+import android.util.Base64
 import android.util.Log
 import android.view.Menu
 import android.view.View
@@ -30,7 +33,10 @@ import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
 
 import com.google.gson.Gson
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,6 +46,26 @@ class MainActivity : AppCompatActivity() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
 
     companion object {
+        fun bitmapToString(bitmap: Bitmap): String {
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+            val byteArray = byteArrayOutputStream.toByteArray()
+            return Base64.encodeToString(byteArray, Base64.DEFAULT)
+        }
+
+        fun stringToBitmap(encodedString: String): Bitmap? {
+            if (encodedString !== null) {
+                val decodedBytes = Base64.decode(encodedString, Base64.DEFAULT)
+                return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+            }
+            return null
+        }
+
+        fun getUserDataValue(context: Context, key: String): String? {
+            val preferences = context.getSharedPreferences("userData", Context.MODE_PRIVATE)
+            return preferences.getString("pp", "");
+        }
+
         fun writeLocationFile(context: Context, fileName: String, data: android.location.Location) {
             val content = "lat=${data.latitude},long=${data.longitude}"
 
@@ -213,6 +239,29 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         val imageView: ImageView = findViewById(R.id.image)
         val bitmap = data?.extras?.get("data") as Bitmap
+
+        val filename = "my_image.jpg"
+        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "")
+
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+
+        val file = File(directory, filename)
+
+        try {
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
+        val preferences = getSharedPreferences("userData", Context.MODE_PRIVATE)
+        val editor = preferences.edit()
+        editor.putString("pp", bitmapToString(bitmap))
+        editor.apply()
+
         imageView.setImageBitmap(bitmap)
     }
 }
