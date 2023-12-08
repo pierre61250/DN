@@ -30,9 +30,6 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.example.dn.databinding.ActivityMainBinding
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
@@ -148,13 +145,11 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkLocationPermission()) {
                     getLocation(view)
-                    // getLastLocation(view)
                 } else {
                     requestLocationPermission()
                 }
             } else {
                 getLocation(view)
-                // getLastLocation(view)
             }
         }
         val drawerLayout: DrawerLayout = binding.drawerLayout
@@ -169,36 +164,6 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
-    }
-
-    private fun getLastLocation(view: View) {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                // Got last known location
-                if (location != null) {
-
-                    var message = "Nouvelle position sauvegardée !"
-
-                    writeLocationFile(applicationContext, "loc.txt", location)
-                    if (findViewById<TextView>(R.id.text_home) !== null) {
-                        Log.d("zz", "ok")
-                        findViewById<TextView>(R.id.text_home).text = "Dernière position enregistrée (lat: ${location.latitude}, long: ${location.longitude})"
-                    }
-
-                    Snackbar.make(view, message, Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show()
-                }
-            }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
