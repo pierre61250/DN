@@ -29,10 +29,14 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.example.dn.databinding.ActivityMainBinding
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
 
-import com.google.gson.Gson
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -44,6 +48,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     companion object {
         fun bitmapToString(bitmap: Bitmap): String {
@@ -93,7 +99,7 @@ class MainActivity : AppCompatActivity() {
                 val loc = recreateLocationFromString(content)
 
                 if (loc != null) {
-                    Log.d("JSON", "${loc.latitude}" )
+                    Log.d("JSON", "${loc.latitude}")
                 }
 
                 return loc
@@ -136,15 +142,19 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.appBarMain.toolbar)
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
         binding.appBarMain.fab.setOnClickListener { view ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkLocationPermission()) {
                     getLocation(view)
+                    // getLastLocation(view)
                 } else {
                     requestLocationPermission()
                 }
             } else {
                 getLocation(view)
+                // getLastLocation(view)
             }
         }
         val drawerLayout: DrawerLayout = binding.drawerLayout
@@ -159,6 +169,36 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+    }
+
+    private fun getLastLocation(view: View) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location: Location? ->
+                // Got last known location
+                if (location != null) {
+
+                    var message = "Nouvelle position sauvegardée !"
+
+                    writeLocationFile(applicationContext, "loc.txt", location)
+                    if (findViewById<TextView>(R.id.text_home) !== null) {
+                        Log.d("zz", "ok")
+                        findViewById<TextView>(R.id.text_home).text = "Dernière position enregistrée (lat: ${location.latitude}, long: ${location.longitude})"
+                    }
+
+                    Snackbar.make(view, message, Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show()
+                }
+            }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -192,23 +232,18 @@ class MainActivity : AppCompatActivity() {
 
         val locationListener = LocationListener { location -> // Handle location changes
 
-            val oldLocation = readLocationFile(applicationContext,"loc.txt")
+            val oldLocation = readLocationFile(applicationContext, "loc.txt")
 
-            var message = ""
-
-            writeLocationFile(applicationContext,"loc.txt", location)
+            writeLocationFile(applicationContext, "loc.txt", location)
             if (findViewById<TextView>(R.id.text_home) !== null) {
-                findViewById<TextView>(R.id.text_home).text = "Dernière position enregistrée (lat: ${location.latitude}, long: ${location.longitude})"
+                findViewById<TextView>(R.id.text_home).text =
+                    "Dernière position enregistrée (lat: ${location.latitude}, long: ${location.longitude})"
             }
 
-            if (oldLocation !== null) {
-                message = "Nouvelle position sauvegardée !"
-            } else {
-                message = "Initialisation de votre position, sauvegarde en cours"
+            if (oldLocation === null) {
+                Snackbar.make(view, "Initialisation de votre position, sauvegarde en cours", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show()
             }
-
-            Snackbar.make(view, message, Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
         }
 
         if (ActivityCompat.checkSelfPermission(
@@ -223,7 +258,7 @@ class MainActivity : AppCompatActivity() {
         }
         locationManager.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
-            0, // minimum time interval between location updates in milliseconds
+            5000, // minimum time interval between location updates in milliseconds
             3.0f, // minimum distance between location updates in meters
             locationListener
         )
@@ -231,7 +266,7 @@ class MainActivity : AppCompatActivity() {
 
     fun takePhotoFromCamera(view: View) {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        val camera : Int  = 123
+        val camera: Int = 123
         startActivityForResult(intent, camera)
     }
 
@@ -241,7 +276,8 @@ class MainActivity : AppCompatActivity() {
         val bitmap = data?.extras?.get("data") as Bitmap
 
         val filename = "my_image.jpg"
-        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "")
+        val directory =
+            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "")
 
         if (!directory.exists()) {
             directory.mkdirs()
